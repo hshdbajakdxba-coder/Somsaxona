@@ -17,8 +17,10 @@ async function callGroq({ system, prompt, maxTokens }) {
       'content-type': 'application/json',
     },
     body: JSON.stringify({
-      model: process.env.GROQ_MODEL || 'llama-3.3-70b-versatile',
-      max_tokens: maxTokens,
+      model: process.env.GROQ_MODEL || 'openai/gpt-oss-120b',
+      // gpt-oss avval o'ylaydi, shuning uchun token zaxirasi kattaroq
+      max_tokens: maxTokens + 2500,
+      reasoning_effort: 'low',
       temperature: 0.8,
       response_format: { type: 'json_object' },
       messages: [
