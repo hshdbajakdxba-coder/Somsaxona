@@ -30,7 +30,7 @@ vercel dev
 ## Vercel'ga deploy
 
 1. Loyihani GitHub'ga yuklang va Vercel'da **Import Project** qiling (Framework: Vite).
-2. **Settings → Environment Variables** bo'limida `ANTHROPIC_API_KEY` ni qo'shing. Agar boshqa model ishlatmoqchi bo'lsangiz, `ANTHROPIC_MODEL` ni ham yozing.
+2. **Settings → Environment Variables** bo'limida `GROQ_API_KEY` (yoki `ANTHROPIC_API_KEY`) ni qo'shing. Modelni `GROQ_MODEL` bilan almashtirish mumkin.
 3. Redeploy qiling.
 
 ## Fayllar

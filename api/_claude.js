@@ -1,15 +1,45 @@
-// Anthropic API'ga umumiy chaqiruv (fayl nomi "_" bilan boshlangani uchun Vercel uni route qilmaydi)
+// AI provayderga umumiy chaqiruv (fayl nomi "_" bilan boshlangani uchun Vercel uni route qilmaydi).
+// GROQ_API_KEY bo'lsa Groq ishlatiladi, aks holda ANTHROPIC_API_KEY.
 
 export const LANG_NAMES = { uz: 'Uzbek (Latin script)', ru: 'Russian', en: 'English' };
 
 export async function callClaude({ system, prompt, maxTokens = 1200 }) {
-  const key = process.env.ANTHROPIC_API_KEY;
-  if (!key) throw Object.assign(new Error('ANTHROPIC_API_KEY is not set'), { status: 500 });
+  if (process.env.GROQ_API_KEY) return callGroq({ system, prompt, maxTokens });
+  if (process.env.ANTHROPIC_API_KEY) return callAnthropic({ system, prompt, maxTokens });
+  throw Object.assign(new Error('No AI key: set GROQ_API_KEY or ANTHROPIC_API_KEY'), { status: 500 });
+}
 
+async function callGroq({ system, prompt, maxTokens }) {
+  const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${process.env.GROQ_API_KEY}`,
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: process.env.GROQ_MODEL || 'llama-3.3-70b-versatile',
+      max_tokens: maxTokens,
+      temperature: 0.8,
+      response_format: { type: 'json_object' },
+      messages: [
+        { role: 'system', content: system },
+        { role: 'user', content: prompt },
+      ],
+    }),
+  });
+  if (!r.ok) {
+    const body = await r.text();
+    throw Object.assign(new Error(`Groq API ${r.status}: ${body.slice(0, 300)}`), { status: 502 });
+  }
+  const data = await r.json();
+  return extractJson(data.choices?.[0]?.message?.content || '');
+}
+
+async function callAnthropic({ system, prompt, maxTokens }) {
   const r = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
-      'x-api-key': key,
+      'x-api-key': process.env.ANTHROPIC_API_KEY,
       'anthropic-version': '2023-06-01',
       'content-type': 'application/json',
     },
