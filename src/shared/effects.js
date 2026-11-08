@@ -43,6 +43,27 @@ export function sanitizeEvent(ev) {
   return clean;
 }
 
+export const LANG_IDS = ['uz', 'ru', 'en'];
+
+// AI matnlarni {uz, ru, en} obyekt sifatida qaytaradi; har bir til uchun alohida
+// tekis vaziyat yasaymiz (ta'sirlar hammasida bir xil).
+export function sanitizeEventI18n(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const pick = (v, lang) => (v && typeof v === 'object' ? v[lang] ?? v.uz ?? v.en : v);
+  const out = {};
+  for (const lang of LANG_IDS) {
+    const ev = sanitizeEvent({
+      title: pick(raw.title, lang),
+      description: pick(raw.description, lang),
+      base: raw.base,
+      options: (Array.isArray(raw.options) ? raw.options : []).map((o) => ({ label: pick(o?.label, lang), effects: o?.effects })),
+    });
+    if (!ev) return null;
+    out[lang] = ev;
+  }
+  return out;
+}
+
 export function hasMultiplier(e) {
   return ['meatPrice', 'flourPrice', 'demand', 'capacity'].some((k) => e[k] !== 1);
 }

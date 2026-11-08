@@ -1,5 +1,5 @@
 // Brauzer tomoni: AI'ga so'rov, ishlamasa oflayn zaxira.
-import { sanitizeEvent } from './shared/effects.js';
+import { sanitizeEventI18n, LANG_IDS } from './shared/effects.js';
 import { FALLBACK_EVENTS, localizeEvent } from './data/fallbackEvents.js';
 import { makeRng, monthOf, preview, offlineAdvice, clampDecision } from './engine/engine.js';
 
@@ -51,16 +51,25 @@ export function isQuietWeek(state) {
 
 export async function fetchEvent(state, decision, lang, usedIds = []) {
   try {
-    const { event } = await post('/api/event', { lang, context: context(state, decision) });
-    const clean = sanitizeEvent(event);
-    if (clean) return { event: clean, source: 'ai' };
+    const { events } = await post('/api/event', { lang, context: context(state, decision) });
+    // server allaqachon tekshirgan; brauzerda yana bir bor xavfsizlik uchun
+    const clean = events && sanitizeEventI18n({
+      title: Object.fromEntries(LANG_IDS.map((l) => [l, events[l]?.title])),
+      description: Object.fromEntries(LANG_IDS.map((l) => [l, events[l]?.description])),
+      base: events.uz?.base,
+      options: (events.uz?.options || []).map((o, i) => ({
+        effects: o.effects,
+        label: Object.fromEntries(LANG_IDS.map((l) => [l, events[l]?.options?.[i]?.label])),
+      })),
+    });
+    if (clean) return { events: clean, source: 'ai' };
   } catch {
     /* zaxiraga o'tamiz */
   }
   const pool = FALLBACK_EVENTS.filter((e) => !usedIds.includes(e.id));
   const list = pool.length ? pool : FALLBACK_EVENTS;
   const pick = list[Math.floor(makeRng(state.seed + state.week * 31)() * list.length)];
-  return { event: localizeEvent(pick, lang), source: 'offline' };
+  return { events: Object.fromEntries(LANG_IDS.map((l) => [l, localizeEvent(pick, l)])), source: 'offline' };
 }
 
 export async function fetchAdvice(state, decision, event, lang) {

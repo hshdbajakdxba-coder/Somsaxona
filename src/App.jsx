@@ -6,6 +6,10 @@ import { LANGS, makeT, fmt } from './i18n.js';
 
 const STORE_KEY = 'biznes-sim-v1';
 
+// Joriy vaziyatni tanlangan tilda qaytaradi (eski saqlangan o'yinlar uchun .event ham qo'llab-quvvatlanadi)
+const eventIn = (current, lang) => current?.events?.[lang] || current?.events?.uz || current?.event || null;
+const textIn = (v, lang) => (v && typeof v === 'object' ? v[lang] || v.uz || '' : v || '');
+
 function load() {
   try { return JSON.parse(localStorage.getItem(STORE_KEY)) || null; } catch { return null; }
 }
@@ -39,7 +43,8 @@ export default function App() {
     const res = await fetchEvent(state, dec, lang, used);
     setCurrent(res);
     setOption(0);
-    if (res.event.id) setUsedIds((u) => [...u, res.event.id].slice(-6));
+    const id = eventIn(res, 'uz')?.id;
+    if (id) setUsedIds((u) => [...u, id].slice(-6));
     setLoadingEvent(false);
   }
 
@@ -57,7 +62,7 @@ export default function App() {
 
   async function endWeek() {
     const pre = game;
-    const ev = current?.event || null;
+    const ev = eventIn(current, lang);
     const { state: next, report: rep } = simulateWeek(pre, decision, ev, option);
     setGame(next);
     setReport({ ...rep, eventOptionCount: ev?.options.length || 0 });
@@ -69,7 +74,8 @@ export default function App() {
       const cf = simulateWeek(pre, a.decision, ev, a.option).report;
       setAdvice({
         status: 'done', week: pre.week, source: a.source, reasoning: a.reasoning,
-        decision: a.decision, option: a.option, optionLabel: ev?.options[a.option]?.label || null,
+        decision: a.decision, option: a.option,
+        optionLabel: current?.events ? Object.fromEntries(Object.entries(current.events).map(([l, e]) => [l, e.options[a.option]?.label])) : ev?.options[a.option]?.label || null,
         cf: { profit: cf.profit, repDelta: cf.repDelta, moraleDelta: cf.moraleDelta, sold: cf.sold },
         mine: { profit: rep.profit, repDelta: rep.repDelta, moraleDelta: rep.moraleDelta, sold: rep.sold },
       });
@@ -103,14 +109,14 @@ export default function App() {
             <Kpis t={t} game={game} />
             {game.status === 'playing' && (
               <>
-                <EventCard t={t} current={current} loading={loadingEvent} option={option} setOption={setOption} />
+                <EventCard t={t} lang={lang} current={current} loading={loadingEvent} option={option} setOption={setOption} />
                 <DecisionPanel t={t} game={game} decision={decision} setDecision={setDecision}
                   onEnd={endWeek} disabled={loadingEvent || !current} />
               </>
             )}
           </section>
           <section className="col">
-            <AdvisorCard t={t} advice={advice} />
+            <AdvisorCard t={t} lang={lang} advice={advice} />
             <ReportCard t={t} report={report} />
             <CashChart t={t} history={game.history} />
           </section>
@@ -194,7 +200,7 @@ function Kpi({ label, value, unit, delta, meter, tone, small }) {
   );
 }
 
-function EventCard({ t, current, loading, option, setOption }) {
+function EventCard({ t, lang, current, loading, option, setOption }) {
   if (loading || !current) {
     return <div className="card event loading"><div className="spinner" />{t('loadingEvent')}</div>;
   }
@@ -207,7 +213,7 @@ function EventCard({ t, current, loading, option, setOption }) {
       </div>
     );
   }
-  const ev = current.event;
+  const ev = eventIn(current, lang);
   return (
     <div className="card event">
       <div className="event-top">
@@ -341,7 +347,7 @@ function ReportCard({ t, report }) {
   );
 }
 
-function AdvisorCard({ t, advice }) {
+function AdvisorCard({ t, lang, advice }) {
   if (!advice) return null;
   if (advice.status === 'loading') {
     return <div className="card advisor loading"><div className="spinner" />{t('advisorLoading')}</div>;
@@ -374,9 +380,9 @@ function AdvisorCard({ t, advice }) {
         <span className="chip">{t('wageMult')}: {Math.round(d.wageMult * 100)}%</span>
         {d.hireBaker !== 0 && <span className="chip">{t('bakers')} {signed(d.hireBaker)}</span>}
         {d.hireHelper !== 0 && <span className="chip">{t('helpers')} {signed(d.hireHelper)}</span>}
-        {advice.optionLabel && <span className="chip">{t('option')}: {advice.optionLabel}</span>}
+        {advice.optionLabel && <span className="chip">{t('option')}: {textIn(advice.optionLabel, lang)}</span>}
       </div>
-      {advice.reasoning ? <p className="reasoning">{advice.reasoning}</p> : <p className="muted small">{t('advisorOffline')}</p>}
+      {textIn(advice.reasoning, lang) ? <p className="reasoning">{textIn(advice.reasoning, lang)}</p> : <p className="muted small">{t('advisorOffline')}</p>}
       <p className="muted small">{t('verdictNote')}</p>
     </div>
   );
